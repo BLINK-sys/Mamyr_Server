@@ -10,17 +10,14 @@ from app.database import SessionLocal, engine, Base
 from app.models import Location, Category, Dish, DishAddon, DishLocation, Banner, Staff, FooterSettings, FooterContact, FooterSchedule
 from app.auth import hash_password
 
-Base.metadata.create_all(bind=engine)
-
-
 def seed():
-    db = SessionLocal()
+    # Drop all existing tables and recreate
+    print("Dropping all tables...")
+    Base.metadata.drop_all(bind=engine)
+    print("Creating tables...")
+    Base.metadata.create_all(bind=engine)
 
-    # Check if already seeded
-    if db.query(Location).count() > 0:
-        print("Database already has data, skipping seed.")
-        db.close()
-        return
+    db = SessionLocal()
 
     # Locations
     loc1 = Location(name="Mamyr Центр", address="ул. Абая 150, Алматы")
