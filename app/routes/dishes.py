@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from app.database import get_db
-from app.models.dish import Dish, DishAddon, DishLocation
+from app.models.dish import Dish, DishAddon, DishLocation, DishStop
 from app.models.location import Location
 
 router = APIRouter(prefix="/dishes", tags=["dishes"])
@@ -20,12 +20,18 @@ class DishIn(BaseModel):
     price: int
     weight: str = ""
     image: str = ""
+    active: bool = True
     categoryId: int
     locationIds: list[int] = []
     addons: list[AddonIn] = []
 
 
-def dish_to_dict(d: Dish) -> dict:
+class StopIn(BaseModel):
+    locationId: int
+
+
+def dish_to_dict(d: Dish, db: Session) -> dict:
+    stop_ids = [s.location_id for s in db.query(DishStop).filter(DishStop.dish_id == d.id).all()]
     return {
         "id": d.id,
         "name": d.name,
@@ -34,8 +40,10 @@ def dish_to_dict(d: Dish) -> dict:
         "price": d.price,
         "weight": d.weight,
         "image": d.image,
+        "active": d.active,
         "categoryId": d.category_id,
         "locationIds": [loc.id for loc in d.locations],
+        "stopLocationIds": stop_ids,
         "addons": [{"id": a.id, "name": a.name, "price": a.price} for a in d.addons],
     }
 
@@ -46,7 +54,7 @@ def list_dishes(location_id: int | None = None, db: Session = Depends(get_db)):
     if location_id:
         q = q.filter(Dish.locations.any(Location.id == location_id))
     rows = q.all()
-    return [dish_to_dict(d) for d in rows]
+    return [dish_to_dict(d, db) for d in rows]
 
 
 @router.post("")
@@ -54,7 +62,7 @@ def create_dish(body: DishIn, db: Session = Depends(get_db)):
     dish = Dish(
         name=body.name, desc=body.desc, ingredients=body.ingredients,
         price=body.price, weight=body.weight, image=body.image,
-        category_id=body.categoryId,
+        active=body.active, category_id=body.categoryId,
     )
     db.add(dish)
     db.flush()
@@ -64,7 +72,7 @@ def create_dish(body: DishIn, db: Session = Depends(get_db)):
         db.add(DishLocation(dish_id=dish.id, location_id=lid))
     db.commit()
     db.refresh(dish)
-    return dish_to_dict(dish)
+    return dish_to_dict(dish, db)
 
 
 @router.put("/{dish_id}")
@@ -78,18 +86,17 @@ def update_dish(dish_id: int, body: DishIn, db: Session = Depends(get_db)):
     dish.price = body.price
     dish.weight = body.weight
     dish.image = body.image
+    dish.active = body.active
     dish.category_id = body.categoryId
-    # Update addons
     db.query(DishAddon).filter(DishAddon.dish_id == dish_id).delete()
     for a in body.addons:
         db.add(DishAddon(dish_id=dish_id, name=a.name, price=a.price))
-    # Update locations
     db.query(DishLocation).filter(DishLocation.dish_id == dish_id).delete()
     for lid in body.locationIds:
         db.add(DishLocation(dish_id=dish_id, location_id=lid))
     db.commit()
     db.refresh(dish)
-    return dish_to_dict(dish)
+    return dish_to_dict(dish, db)
 
 
 @router.delete("/{dish_id}")
@@ -98,4 +105,24 @@ def delete_dish(dish_id: int, db: Session = Depends(get_db)):
     if dish:
         db.delete(dish)
         db.commit()
+    return {"ok": True}
+
+
+@router.post("/{dish_id}/stop")
+def add_stop(dish_id: int, body: StopIn, db: Session = Depends(get_db)):
+    existing = db.query(DishStop).filter(
+        DishStop.dish_id == dish_id, DishStop.location_id == body.locationId
+    ).first()
+    if not existing:
+        db.add(DishStop(dish_id=dish_id, location_id=body.locationId))
+        db.commit()
+    return {"ok": True}
+
+
+@router.delete("/{dish_id}/stop/{location_id}")
+def remove_stop(dish_id: int, location_id: int, db: Session = Depends(get_db)):
+    db.query(DishStop).filter(
+        DishStop.dish_id == dish_id, DishStop.location_id == location_id
+    ).delete()
+    db.commit()
     return {"ok": True}

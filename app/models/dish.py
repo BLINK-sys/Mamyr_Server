@@ -1,10 +1,17 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Table
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from app.database import Base
 
 
 class DishLocation(Base):
     __tablename__ = "dish_locations"
+
+    dish_id = Column(Integer, ForeignKey("dishes.id", ondelete="CASCADE"), primary_key=True)
+    location_id = Column(Integer, ForeignKey("locations.id", ondelete="CASCADE"), primary_key=True)
+
+
+class DishStop(Base):
+    __tablename__ = "dish_stops"
 
     dish_id = Column(Integer, ForeignKey("dishes.id", ondelete="CASCADE"), primary_key=True)
     location_id = Column(Integer, ForeignKey("locations.id", ondelete="CASCADE"), primary_key=True)
@@ -29,6 +36,7 @@ class Dish(Base):
     price = Column(Integer, nullable=False)
     weight = Column(String, default="")
     image = Column(String, default="")
+    active = Column(Boolean, default=True, nullable=False, server_default="true")
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
 
     addons = relationship("DishAddon", cascade="all, delete-orphan", lazy="joined")
