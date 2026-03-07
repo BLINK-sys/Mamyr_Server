@@ -6,22 +6,21 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from dotenv import load_dotenv
 load_dotenv()
 
-from sqlalchemy import text
 from app.database import SessionLocal, engine, Base
 from app.models import Location, Category, Dish, DishAddon, DishLocation, Banner, Staff, FooterSettings, FooterContact, FooterSchedule
 from app.auth import hash_password
 
 def seed():
-    # Drop ALL tables (including old ones from previous Flask backend) with CASCADE
-    print("Dropping all tables with CASCADE...")
-    with engine.connect() as conn:
-        conn.execute(text("DROP SCHEMA public CASCADE"))
-        conn.execute(text("CREATE SCHEMA public"))
-        conn.commit()
-    print("Creating tables...")
+    print("Creating tables if not exist...")
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
+
+    # Skip if already seeded
+    if db.query(Location).count() > 0:
+        print("Database already has data, skipping seed.")
+        db.close()
+        return
 
     # Locations
     loc1 = Location(name="Mamyr Центр", address="ул. Абая 150, Алматы")
