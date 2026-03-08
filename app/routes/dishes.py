@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from app.database import get_db
-from app.models.dish import Dish, DishAddon, DishLocation, DishStop
+from app.models.dish import Dish, DishAddon, DishLocation, DishStop, DishComboItem
 from app.models.location import Location
 from app.models.order import OrderItem
 
@@ -22,6 +22,10 @@ class DishIn(BaseModel):
     weight: str = ""
     image: str = ""
     active: bool = True
+    isCombo: bool = False
+    comboMin: int = 1
+    comboMax: int = 4
+    comboItemIds: list[int] = []
     categoryId: int
     locationIds: list[int] = []
     addons: list[AddonIn] = []
@@ -33,6 +37,7 @@ class StopIn(BaseModel):
 
 def dish_to_dict(d: Dish, db: Session) -> dict:
     stop_ids = [s.location_id for s in db.query(DishStop).filter(DishStop.dish_id == d.id).all()]
+    combo_item_ids = [c.combo_dish_id for c in db.query(DishComboItem).filter(DishComboItem.dish_id == d.id).all()]
     return {
         "id": d.id,
         "name": d.name,
@@ -42,6 +47,10 @@ def dish_to_dict(d: Dish, db: Session) -> dict:
         "weight": d.weight,
         "image": d.image,
         "active": d.active,
+        "isCombo": d.is_combo,
+        "comboMin": d.combo_min,
+        "comboMax": d.combo_max,
+        "comboItemIds": combo_item_ids,
         "categoryId": d.category_id,
         "locationIds": [loc.id for loc in d.locations],
         "stopLocationIds": stop_ids,
@@ -63,7 +72,8 @@ def create_dish(body: DishIn, db: Session = Depends(get_db)):
     dish = Dish(
         name=body.name, desc=body.desc, ingredients=body.ingredients,
         price=body.price, weight=body.weight, image=body.image,
-        active=body.active, category_id=body.categoryId,
+        active=body.active, is_combo=body.isCombo, combo_min=body.comboMin,
+        combo_max=body.comboMax, category_id=body.categoryId,
     )
     db.add(dish)
     db.flush()
@@ -71,6 +81,8 @@ def create_dish(body: DishIn, db: Session = Depends(get_db)):
         db.add(DishAddon(dish_id=dish.id, name=a.name, price=a.price))
     for lid in body.locationIds:
         db.add(DishLocation(dish_id=dish.id, location_id=lid))
+    for cid in body.comboItemIds:
+        db.add(DishComboItem(dish_id=dish.id, combo_dish_id=cid))
     db.commit()
     db.refresh(dish)
     return dish_to_dict(dish, db)
@@ -88,6 +100,9 @@ def update_dish(dish_id: int, body: DishIn, db: Session = Depends(get_db)):
     dish.weight = body.weight
     dish.image = body.image
     dish.active = body.active
+    dish.is_combo = body.isCombo
+    dish.combo_min = body.comboMin
+    dish.combo_max = body.comboMax
     dish.category_id = body.categoryId
     db.query(DishAddon).filter(DishAddon.dish_id == dish_id).delete()
     for a in body.addons:
@@ -95,6 +110,9 @@ def update_dish(dish_id: int, body: DishIn, db: Session = Depends(get_db)):
     db.query(DishLocation).filter(DishLocation.dish_id == dish_id).delete()
     for lid in body.locationIds:
         db.add(DishLocation(dish_id=dish_id, location_id=lid))
+    db.query(DishComboItem).filter(DishComboItem.dish_id == dish_id).delete()
+    for cid in body.comboItemIds:
+        db.add(DishComboItem(dish_id=dish_id, combo_dish_id=cid))
     db.commit()
     db.refresh(dish)
     return dish_to_dict(dish, db)

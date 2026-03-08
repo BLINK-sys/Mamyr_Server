@@ -17,6 +17,11 @@ with engine.connect() as conn:
     if "active" not in cols:
         conn.execute(text("ALTER TABLE dishes ADD COLUMN active BOOLEAN NOT NULL DEFAULT TRUE"))
         conn.commit()
+    if "is_combo" not in cols:
+        conn.execute(text("ALTER TABLE dishes ADD COLUMN is_combo BOOLEAN NOT NULL DEFAULT FALSE"))
+        conn.execute(text("ALTER TABLE dishes ADD COLUMN combo_min INTEGER DEFAULT 1"))
+        conn.execute(text("ALTER TABLE dishes ADD COLUMN combo_max INTEGER DEFAULT 4"))
+        conn.commit()
 
 app = FastAPI(title="Mamyr Cafe API")
 

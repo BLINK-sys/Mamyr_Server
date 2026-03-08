@@ -26,6 +26,13 @@ class DishAddon(Base):
     price = Column(Integer, default=0)
 
 
+class DishComboItem(Base):
+    __tablename__ = "dish_combo_items"
+
+    dish_id = Column(Integer, ForeignKey("dishes.id", ondelete="CASCADE"), primary_key=True)
+    combo_dish_id = Column(Integer, ForeignKey("dishes.id", ondelete="CASCADE"), primary_key=True)
+
+
 class Dish(Base):
     __tablename__ = "dishes"
 
@@ -37,6 +44,9 @@ class Dish(Base):
     weight = Column(String, default="")
     image = Column(String, default="")
     active = Column(Boolean, default=True, nullable=False, server_default="true")
+    is_combo = Column(Boolean, default=False, nullable=False, server_default="false")
+    combo_min = Column(Integer, default=1)
+    combo_max = Column(Integer, default=4)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
 
     addons = relationship("DishAddon", cascade="all, delete-orphan", lazy="joined")
