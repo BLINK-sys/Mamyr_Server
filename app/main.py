@@ -4,11 +4,19 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text, inspect as sa_inspect
 from app.database import engine, Base
 from app.routes import auth, locations, categories, dishes, banners, staff, orders, footer, upload
 
-# Create tables
+# Create new tables (won't alter existing ones)
 Base.metadata.create_all(bind=engine)
+
+# Manual migrations for added columns on existing tables
+with engine.connect() as conn:
+    cols = [c["name"] for c in sa_inspect(engine).get_columns("dishes")]
+    if "active" not in cols:
+        conn.execute(text("ALTER TABLE dishes ADD COLUMN active BOOLEAN NOT NULL DEFAULT TRUE"))
+        conn.commit()
 
 app = FastAPI(title="Mamyr Cafe API")
 
