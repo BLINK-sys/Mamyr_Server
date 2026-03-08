@@ -75,6 +75,38 @@ def delete_dish_image(category_id: int, dish_id: int):
     return {"ok": True}
 
 
+BANNER_ROOT = os.path.join(DISK_ROOT, "banners")
+os.makedirs(BANNER_ROOT, exist_ok=True)
+
+
+@router.post("/banner-image")
+async def upload_banner_image(
+    file: UploadFile = File(...),
+    banner_id: int = Form(...),
+):
+    d = os.path.join(BANNER_ROOT, str(banner_id))
+    os.makedirs(d, exist_ok=True)
+    for f in os.listdir(d):
+        fp = os.path.join(d, f)
+        if os.path.isfile(fp):
+            os.remove(fp)
+    ext = os.path.splitext(file.filename or "")[1] or ".jpg"
+    filename = f"{uuid.uuid4().hex}{ext}"
+    dest = os.path.join(d, filename)
+    with open(dest, "wb") as f:
+        content = await file.read()
+        f.write(content)
+    return {"url": f"/api/upload/banner-image/{banner_id}/{filename}"}
+
+
+@router.get("/banner-image/{banner_id}/{filename}")
+def get_banner_image(banner_id: int, filename: str):
+    path = os.path.join(BANNER_ROOT, str(banner_id), filename)
+    if not os.path.exists(path):
+        return {"error": "not found"}
+    return FileResponse(path, headers={"Access-Control-Allow-Origin": "*"})
+
+
 @router.get("/dish-image/{category_id}/{dish_id}/{filename}")
 def get_dish_image(category_id: int, dish_id: int, filename: str):
     path = os.path.join(DISK_ROOT, str(category_id), str(dish_id), filename)

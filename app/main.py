@@ -23,6 +23,20 @@ with engine.connect() as conn:
         conn.execute(text("ALTER TABLE dishes ADD COLUMN combo_max INTEGER DEFAULT 4"))
         conn.commit()
 
+    banner_cols = [c["name"] for c in sa_inspect(engine).get_columns("banners")]
+    if "active" not in banner_cols:
+        conn.execute(text("ALTER TABLE banners ADD COLUMN active BOOLEAN NOT NULL DEFAULT TRUE"))
+        conn.commit()
+    if "overlay_opacity" not in banner_cols:
+        conn.execute(text("ALTER TABLE banners ADD COLUMN overlay_opacity FLOAT DEFAULT 0.5"))
+        conn.commit()
+    if "elements" not in banner_cols:
+        conn.execute(text("ALTER TABLE banners ADD COLUMN elements JSON DEFAULT '[]'::json"))
+        conn.commit()
+    if "name" not in banner_cols:
+        conn.execute(text("ALTER TABLE banners ADD COLUMN name VARCHAR DEFAULT ''"))
+        conn.commit()
+
 app = FastAPI(title="Mamyr Cafe API")
 
 app.add_middleware(
