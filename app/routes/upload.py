@@ -80,7 +80,7 @@ def get_dish_image(category_id: int, dish_id: int, filename: str):
     path = os.path.join(DISK_ROOT, str(category_id), str(dish_id), filename)
     if not os.path.exists(path):
         return {"error": "not found"}
-    return FileResponse(path)
+    return FileResponse(path, headers={"Access-Control-Allow-Origin": "*"})
 
 
 # Legacy: keep old upload endpoint working
@@ -104,4 +104,4 @@ def get_file(filename: str):
     path = os.path.join(UPLOAD_DIR, filename)
     if not os.path.exists(path):
         return {"error": "not found"}
-    return FileResponse(path)
+    return FileResponse(path, headers={"Access-Control-Allow-Origin": "*"})
