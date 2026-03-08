@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.models.dish import Dish, DishAddon, DishLocation, DishStop
 from app.models.location import Location
+from app.models.order import OrderItem
 
 router = APIRouter(prefix="/dishes", tags=["dishes"])
 
@@ -103,6 +104,7 @@ def update_dish(dish_id: int, body: DishIn, db: Session = Depends(get_db)):
 def delete_dish(dish_id: int, db: Session = Depends(get_db)):
     dish = db.query(Dish).get(dish_id)
     if dish:
+        db.query(OrderItem).filter(OrderItem.dish_id == dish_id).delete()
         db.delete(dish)
         db.commit()
     return {"ok": True}
